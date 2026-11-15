@@ -2,7 +2,7 @@
 #include <string>
 #include <vector>
 #include <map>
-#include <stdexcept>
+#include "cipher_error.h"
 
 class modAlphaCipher {
 private:
@@ -12,6 +12,9 @@ private:
 
     std::vector<int> convert(const std::wstring& s);
     std::wstring convert(const std::vector<int>& v);
+    std::wstring getValidKey(const std::wstring& s);
+    std::wstring getValidOpenText(const std::wstring& s);
+    std::wstring getValidCipherText(const std::wstring& s);
 
 public:
     modAlphaCipher() = delete;

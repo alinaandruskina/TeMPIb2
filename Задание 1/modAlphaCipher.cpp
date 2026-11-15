@@ -1,77 +1,84 @@
 #include "modAlphaCipher.h"
-#include <locale>
-#include <stdexcept>
+#include <cwctype>
+#include <algorithm>
 
-modAlphaCipher::modAlphaCipher(const std::wstring& skey)
-{
-    // Проверка: ключ не пустой
-    if (skey.empty())
-        throw std::invalid_argument("Ключ не может быть пустым");
+inline std::wstring modAlphaCipher::getValidKey(const std::wstring& s) {
+    if (s.empty())
+        throw cipher_error("Empty key");
 
-    // Заполнение алфавита
-    for (size_t i = 0; i < numAlpha.size(); i++)
-        alphaNum[numAlpha[i]] = static_cast<int>(i);
-
-    // Проверка допустимости символов ключа
-    for (wchar_t c : skey) {
-        if (alphaNum.find(c) == alphaNum.end())
-            throw std::invalid_argument(
-                "Ключ содержит недопустимый символ");
-    }
-
-    key = convert(skey);
-}
-
-std::vector<int> modAlphaCipher::convert(const std::wstring& s)
-{
-    std::vector<int> result;
+    std::wstring tmp;
     for (wchar_t c : s) {
-        auto it = alphaNum.find(c);
-        if (it == alphaNum.end())
-            throw std::invalid_argument(
-                "Обнаружен недопустимый символ");
-        result.push_back(it->second);
+        wchar_t u = std::towupper(c);
+        if (alphaNum.find(u) == alphaNum.end())
+            throw cipher_error("Invalid key characters");
+        tmp.push_back(u);
     }
-    return result;
+
+    if (tmp.size() > 1) {
+        bool allSame = true;
+        for (size_t i = 1; i < tmp.size(); ++i) {
+            if (tmp[i] != tmp[0]) { allSame = false; break; }
+        }
+        if (allSame)
+            throw cipher_error("WeakKey");
+    }
+    return tmp;
 }
 
-std::wstring modAlphaCipher::convert(const std::vector<int>& v)
-{
-    std::wstring result;
-    for (int i : v) {
-        if (i < 0 || i >= static_cast<int>(numAlpha.size()))
-            throw std::out_of_range(
-                "Индекс выходит за границы алфавита");
-        result.push_back(numAlpha[i]);
+inline std::wstring modAlphaCipher::getValidOpenText(const std::wstring& s) {
+    if (s.empty())
+        throw cipher_error("Empty open text");
+
+    std::wstring tmp;
+    for (wchar_t c : s) {
+        wchar_t u = std::towupper(c);
+        if (alphaNum.find(u) != alphaNum.end())
+            tmp.push_back(u);
     }
-    return result;
+    if (tmp.empty())
+        throw cipher_error("No valid characters in text");
+    return tmp;
 }
 
-std::wstring modAlphaCipher::encrypt(const std::wstring& open_text)
-{
-    if (open_text.empty())
-        throw std::invalid_argument(
-            "Шифруемый текст не может быть пустым");
+inline std::wstring modAlphaCipher::getValidCipherText(const std::wstring& s) {
+    if (s.empty())
+        throw cipher_error("Empty cipher text");
+    for (wchar_t c : s) {
+        if (alphaNum.find(c) == alphaNum.end())
+            throw cipher_error("Invalid cipher text characters");
+    }
+    return s;
+}
 
-    std::vector<int> work = convert(open_text);
+modAlphaCipher::modAlphaCipher(const std::wstring& skey) {
+    for (size_t i = 0; i < numAlpha.size(); ++i)
+        alphaNum[numAlpha[i]] = static_cast<int>(i);
+    key = convert(getValidKey(skey));
+}
 
-    for (size_t i = 0; i < work.size(); i++)
+std::wstring modAlphaCipher::encrypt(const std::wstring& open_text) {
+    std::vector<int> work = convert(getValidOpenText(open_text));
+    for (size_t i = 0; i < work.size(); ++i)
         work[i] = (work[i] + key[i % key.size()]) % alphaNum.size();
-
     return convert(work);
 }
 
-std::wstring modAlphaCipher::decrypt(const std::wstring& cipher_text)
-{
-    if (cipher_text.empty())
-        throw std::invalid_argument(
-            "Расшифровываемый текст не может быть пустым");
-
-    std::vector<int> work = convert(cipher_text);
-
-    for (size_t i = 0; i < work.size(); i++)
+std::wstring modAlphaCipher::decrypt(const std::wstring& cipher_text) {
+    std::vector<int> work = convert(getValidCipherText(cipher_text));
+    for (size_t i = 0; i < work.size(); ++i)
         work[i] = (work[i] + alphaNum.size()
                    - key[i % key.size()]) % alphaNum.size();
-
     return convert(work);
+}
+
+std::vector<int> modAlphaCipher::convert(const std::wstring& s) {
+    std::vector<int> result;
+    for (wchar_t c : s) result.push_back(alphaNum[c]);
+    return result;
+}
+
+std::wstring modAlphaCipher::convert(const std::vector<int>& v) {
+    std::wstring result;
+    for (int i : v) result.push_back(numAlpha[i]);
+    return result;
 }

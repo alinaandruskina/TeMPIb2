@@ -2,6 +2,7 @@
 #include <locale>
 #include <limits>
 #include <stdexcept>
+//#include <windows.h>
 #include "modAlphaCipher.h"
 using namespace std;
 
@@ -24,42 +25,46 @@ int main()
 
     try {
         wcout << L"Шифр Гронсфельда готов. Введите ключ: ";
-        wcin >> key;
+        
+        getline(wcin, key);
 
-        if (!isValid(key))
+        if (!key.empty() && !isValid(key))
             throw invalid_argument("Ключ содержит недопустимые символы");
 
         modAlphaCipher cipher(key);
         wcout << L"Ключ принят\n";
 
         do {
-            wcout << L"\nВыберите действие "
-                     L"(0 - выход, 1 - зашифровать, 2 - расшифровать): ";
+            wcout << L"\nВыберите действие (0 - выход, 1 - зашифровать, 2 - расшифровать): ";
             wcin >> op;
+
+            if (wcin.fail()) {
+                wcin.clear();
+                wcin.ignore(numeric_limits<streamsize>::max(), L'\n');
+                throw invalid_argument("Операция должна быть числом");
+            }
 
             if (op > 2) {
                 wcout << L"Ошибка: недопустимая операция\n";
             } else if (op > 0) {
+                wcin.ignore(numeric_limits<streamsize>::max(), L'\n'); // очистка буфера
                 wcout << L"Введите текст: ";
-                wcin >> text;
+                
+                getline(wcin, text);
 
                 if (!isValid(text))
-                    throw invalid_argument(
-                        "Текст содержит недопустимые символы");
+                    throw invalid_argument("Текст содержит недопустимые символы");
 
                 if (op == 1)
-                    wcout << L"Зашифрованный текст: "
-                          << cipher.encrypt(text) << endl;
+                    wcout << L"Зашифрованный текст: " << cipher.encrypt(text) << endl;
                 else
-                    wcout << L"Расшифрованный текст: "
-                          << cipher.decrypt(text) << endl;
+                    wcout << L"Расшифрованный текст: " << cipher.decrypt(text) << endl;
             }
         } while (op != 0);
     }
     catch (const exception& e) {
-        wcerr << L"Ошибка " << e.what() << endl;
+        cerr  << e.what() << endl;
         return 1;
     }
-
     return 0;
 }

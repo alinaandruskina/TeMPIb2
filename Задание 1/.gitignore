@@ -1,0 +1,32 @@
+# Скомпилированные файлы и библиотеки
+*.o
+*.obj
+*.exe
+*.out
+*.app
+*.dll
+*.so
+*.dylib
+
+# Исполняемые файлы без расширения (как на твоем скрине)
+check
+test_alpha
+test_beta
+
+# Папки сборки (Debug, Release)
+Debug/
+Release/
+build/
+bin/
+obj/
+
+# Файлы проектов CodeLite
+*.mk
+*.project
+*.workspace
+*.txt
+
+# Файлы окружения IDE
+.vscode/
+.idea/
+*.swp
