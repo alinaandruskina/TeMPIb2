@@ -1,0 +1,34 @@
+# Скомпилированные файлы и библиотеки
+*.o
+*.obj
+*.exe
+*.out
+*.app
+*.dll
+*.so
+*.dylib
+
+# Исполняемые файлы без расширения (наши тесты и проверки)
+test_beta
+check
+test_alpha
+
+# Папки сборки (CodeLite обычно создает Debug)
+Debug/
+Release/
+build/
+bin/
+obj/
+
+# Файлы проектов CodeLite и CMake
+*.mk
+*.project
+*.workspace
+*.txt
+CMakeLists.txt
+
+# Файлы окружения IDE и системный мусор
+.vscode/
+.idea/
+*.swp
+.DS_Store

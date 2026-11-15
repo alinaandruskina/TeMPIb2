@@ -1,7 +1,7 @@
 #pragma once
 #include <string>
 #include <vector>
-#include <stdexcept>
+#include "cipher_error.h"
 
 class modBetaCipher {
 private:
