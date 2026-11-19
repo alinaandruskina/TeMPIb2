@@ -1,79 +1,52 @@
-#include <iostream>
+#include <UnitTest++/UnitTest++.h>
 #include <locale>
-#include <string>
-#include <vector>
 #include "modAlphaCipher.h"
 
-int total_tests = 0;
-int passed_tests = 0;
+struct KeyB_fixture {
+    modAlphaCipher * p;
+    KeyB_fixture()  { p = new modAlphaCipher(L"Б"); }
+    ~KeyB_fixture() { delete p; }
+};
 
-void check_equal(const std::wstring& expected, const std::wstring& actual, const std::string& test_name) {
-    total_tests++;
-    if (expected == actual) {
-        passed_tests++;
-        std::wcout << L"[OK]   " << test_name.c_str() << L"\n";
-    } else {
-        std::wcout << L"[FAIL] " << test_name.c_str() << L" | Ожидалось: " << expected << L" | Получено: " << actual << L"\n";
-    }
+SUITE(KeyTest)
+{
+    TEST(ValidKey)         { CHECK(modAlphaCipher(L"БВГ").encrypt(L"ААААА") == L"БВГБВ"); }
+    TEST(LongKey)          { CHECK(modAlphaCipher(L"БВГДЕЖЗИЙК").encrypt(L"ААААА") == L"БВГДЕ"); }
+    TEST(LowCaseKey)       { CHECK(modAlphaCipher(L"бвг").encrypt(L"ААААА") == L"БВГБВ"); }
+    
+    TEST(DigitsInKey)      { CHECK_THROW(modAlphaCipher cp(L"Б1"), cipher_error); }
+    TEST(PunctuationInKey) { CHECK_THROW(modAlphaCipher cp(L"Б,В"), cipher_error); }
+    TEST(WhitespaceInKey)  { CHECK_THROW(modAlphaCipher cp(L"Б В"), cipher_error); }
+    TEST(EmptyKey)         { CHECK_THROW(modAlphaCipher cp(L""), cipher_error); }
+    TEST(WeakKey)          { CHECK_THROW(modAlphaCipher cp(L"ААА"), cipher_error); }
 }
-template <typename Func>
-void check_throw(Func func, const std::string& test_name) {
-    total_tests++;
-    try {
-        func();
-        std::wcout << L"[FAIL] " << test_name.c_str() << L" (не было исключения)\n";
-    } catch (const cipher_error&) {
-        passed_tests++;
-        std::wcout << L"[OK]   " << test_name.c_str() << L"\n";
-    } catch (...) {
-        std::wcout << L"[FAIL] " << test_name.c_str() << L" (неверный тип исключения)\n";
-    }
+
+SUITE(EncryptTest)
+{
+    TEST_FIXTURE(KeyB_fixture, UpCaseString)   { CHECK(p->encrypt(L"ПРИВЕТМИР") == L"РСЙГЖУНЙС"); }
+    TEST_FIXTURE(KeyB_fixture, LowCaseString)  { CHECK(p->encrypt(L"приветмир") == L"РСЙГЖУНЙС"); }
+    TEST_FIXTURE(KeyB_fixture, StringWithWhitspaceAndPunct) { CHECK(p->encrypt(L"ПРИВЕТ, МИР!") == L"РСЙГЖУНЙС"); }
+    TEST_FIXTURE(KeyB_fixture, StringWithNumbers) { CHECK(p->encrypt(L"С Новым 2024 Годом") == L"ТОПГЬНДПЕПН"); }
+    
+    TEST_FIXTURE(KeyB_fixture, EmptyString)    { CHECK_THROW(p->encrypt(L""), cipher_error); }
+    TEST_FIXTURE(KeyB_fixture, NoAlphaString)  { CHECK_THROW(p->encrypt(L"1234+8765=9999"), cipher_error); }
+    
+    TEST(MaxShiftKey) { CHECK(modAlphaCipher(L"Я").encrypt(L"ПРИВЕТ") == L"ОПЗБДС"); }
+}
+
+SUITE(DecryptTest)
+{
+    TEST_FIXTURE(KeyB_fixture, UpCaseString)  { CHECK(p->decrypt(L"РСЙГЖУНЙС") == L"ПРИВЕТМИР"); }
+    TEST_FIXTURE(KeyB_fixture, LowCaseString) { CHECK_THROW(p->decrypt(L"рсйгжунйс"), cipher_error); }
+    TEST_FIXTURE(KeyB_fixture, WhitespaceString) { CHECK_THROW(p->decrypt(L"РСЙГЖУ НЙС"), cipher_error); }
+    TEST_FIXTURE(KeyB_fixture, DigitsString)  { CHECK_THROW(p->decrypt(L"ТОПХСН2024ГОДПН"), cipher_error); }
+    TEST_FIXTURE(KeyB_fixture, PunctString)   { CHECK_THROW(p->decrypt(L"РСЙГЖУ,НЙС"), cipher_error); }
+    TEST_FIXTURE(KeyB_fixture, EmptyString)   { CHECK_THROW(p->decrypt(L""), cipher_error); }
+    
+    TEST(MaxShiftKey) { CHECK(modAlphaCipher(L"Я").decrypt(L"ОПЗБДС") == L"ПРИВЕТ"); }
 }
 
 int main() {
     std::locale::global(std::locale("ru_RU.UTF-8"));
-    std::wcout.imbue(std::locale());
-    
-    std::wcout << L"=== ТЕСТИРОВАНИЕ ШИФРА ГРОНСФЕЛЬДА ===\n\n";
-
-    std::wcout << L"--- Тесты конструктора ---\n";
-    check_equal(L"БВГБВ", modAlphaCipher(L"БВГ").encrypt(L"ААААА"), "ValidKey");
-    check_equal(L"БВГДЕ", modAlphaCipher(L"БВГДЕЖЗИЙК").encrypt(L"ААААА"), "LongKey");
-    check_equal(L"БВГБВ", modAlphaCipher(L"бвг").encrypt(L"ААААА"), "LowCaseKey");
-    check_throw([]{ modAlphaCipher cp(L"Б1"); }, "DigitsInKey");
-    check_throw([]{ modAlphaCipher cp(L"Б,В"); }, "PunctuationInKey");
-    check_throw([]{ modAlphaCipher cp(L"Б В"); }, "WhitespaceInKey");
-    check_throw([]{ modAlphaCipher cp(L""); }, "EmptyKey");
-    check_throw([]{ modAlphaCipher cp(L"ААА"); }, "WeakKey");
-
-    std::wcout << L"\n--- Тесты encrypt ---\n";
-    modAlphaCipher cipherB(L"Б");
-    check_equal(L"РСЙГЖУНЙС", cipherB.encrypt(L"ПРИВЕТМИР"), "UpCaseString");
-    check_equal(L"РСЙГЖУНЙС", cipherB.encrypt(L"приветмир"), "LowCaseString");
-    check_equal(L"РСЙГЖУНЙС", cipherB.encrypt(L"ПРИВЕТ, МИР!"), "StringWithWhitspaceAndPunct");
-    check_equal(L"ТОПГЬНДПЕПН", cipherB.encrypt(L"С Новым 2024 Годом"), "StringWithNumbers");
-    check_throw([&]{ cipherB.encrypt(L""); }, "EmptyString");
-    check_throw([&]{ cipherB.encrypt(L"1234+8765=9999"); }, "NoAlphaString");
-    check_equal(L"ОПЗБДС", modAlphaCipher(L"Я").encrypt(L"ПРИВЕТ"), "MaxShiftKey");
-
-    std::wcout << L"\n--- Тесты decrypt ---\n";
-    check_equal(L"ПРИВЕТМИР", cipherB.decrypt(L"РСЙГЖУНЙС"), "UpCaseString");
-    check_throw([&]{ cipherB.decrypt(L"рсйгжунйс"); }, "LowCaseString");
-    check_throw([&]{ cipherB.decrypt(L"РСЙГЖУ НЙС"); }, "WhitespaceString");
-    check_throw([&]{ cipherB.decrypt(L"ТОПХСН2024ГОДПН"); }, "DigitsString");
-    check_throw([&]{ cipherB.decrypt(L"РСЙГЖУ,НЙС"); }, "PunctString");
-    check_throw([&]{ cipherB.decrypt(L""); }, "EmptyString");
-    check_equal(L"ПРИВЕТ", modAlphaCipher(L"Я").decrypt(L"ОПЗБДС"), "MaxShiftKey");
-
-    std::wcout << L"\n=== ИТОГОВЫЕ РЕЗУЛЬТАТЫ ===\n";
-    std::wcout << L"Всего тестов: " << total_tests << L"\n";
-    std::wcout << L"Пройдено:     " << passed_tests << L"\n";
-    std::wcout << L"Не пройдено:  " << (total_tests - passed_tests) << L"\n";
-    
-    if (total_tests == passed_tests) {
-        std::wcout << L"\nУСПЕХ: ВСЕ ТЕСТЫ ПРОЙДЕНЫ!\n";
-    } else {
-        std::wcout << L"\nОШИБКА: ЕСТЬ НЕПРОЙДЕННЫЕ ТЕСТЫ.\n";
-    }
-    return 0;
+    return UnitTest::RunAllTests();
 }
